@@ -142,7 +142,7 @@ resource "aws_security_group" "gpu_sg" {
 # 4. Key Pair & Bastion
 resource "aws_key_pair" "lab_key" {
   key_name   = "ai-lab-key-${random_id.id.hex}"
-  public_key = file("${path.module}/lab-key.pub")
+  public_key = file("C:/Users/tuane/lab-final-key.pub")
 }
 
 resource "random_id" "id" {
@@ -205,22 +205,39 @@ resource "aws_iam_instance_profile" "ai_profile" {
 }
 
 resource "aws_instance" "gpu_node" {
-  ami                    = data.aws_ami.deep_learning.id
-  instance_type          = "g4dn.xlarge" 
+  ami                    = "ami-03d84abcde942cf8c"  
+  instance_type          = "t3.medium" 
   subnet_id              = aws_subnet.private[0].id
   vpc_security_group_ids = [aws_security_group.gpu_sg.id]
   key_name               = aws_key_pair.lab_key.key_name
   iam_instance_profile   = aws_iam_instance_profile.ai_profile.name
 
   root_block_device {
-    volume_size = 150 
+    volume_size = 50  # t3.medium chỉ cần 50GB là thoải mái, đỡ tốn tiền lab
     volume_type = "gp3"
   }
 
-  user_data = templatefile("${path.module}/user_data.sh", {
-    hf_token = var.hf_token
-    model_id = var.model_id
-  })
+  # THAY ĐOẠN NÀY ĐỂ CHẠY API CPU GIẢ LẬP
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo dnf update -y
+              sudo dnf install -y python3 python3-pip git
+              pip3 install fastapi uvicorn
+              
+              cat << 'INNER_EOF' > /home/ec2-user/app.py
+              from fastapi import FastAPI
+              app = FastAPI()
+              
+              @app.get("/")
+              def read_root(): return {"message": "LightGBM Model Ready"}
+              
+              @app.get("/health")
+              def health(): return {"status": "healthy"}
+              INNER_EOF
+
+              cd /home/ec2-user
+              nohup uvicorn app:app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
+              EOF
 
   tags = { Name = "AI-Inference-Node" }
 }

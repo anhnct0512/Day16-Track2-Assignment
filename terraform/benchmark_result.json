@@ -1,0 +1,12 @@
+{
+    "model_name": "LightGBM_CPU_Baseline",
+    "training_time_seconds": 42.15,
+    "metrics": {
+        "train_auc": 0.8842,
+        "valid_auc": 0.8519,
+        "test_auc": 0.8492
+    },
+    "inference_latency_ms": 1.24,
+    "hardware_used": "AWS EC2 t3.medium (CPU Only)",
+    "status": "successed"
+}
